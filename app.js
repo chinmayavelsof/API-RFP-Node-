@@ -9,6 +9,7 @@ const loginRoutes = require('./routes/loginRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const vendorRoutes = require('./routes/vendorRoutes');
 const passwordRoutes = require('./routes/passwordRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
 // const registerRoutes = require('./routes/registerRoutes');
 // const logoutRoutes = require('./routes/logoutRoutes');
 
@@ -25,7 +26,7 @@ app.use('/api', adminRoutes);
 app.use('/api', passwordRoutes);
 
 app.use('/api', vendorRoutes);
-
+app.use('/api', categoryRoutes);
 app.use(cookieParser());
 // All responses use HTTP 200; body indicates success/error via response field
 app.use((req, res, next) => {

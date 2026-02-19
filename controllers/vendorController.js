@@ -143,10 +143,72 @@ const registerVendor = async (req, res) => {
 }
 
 const getVendorList = async (req, res) => {
-    const vendors = await vendorService.getVendorList();
-    return res.status(200).json({ response: "success", vendors: vendors });
-}
+    try {
+        const vendors = await vendorService.getVendorList();
+        return res.status(200).json({ response: "success", vendors });
+    } catch (err) {
+        logger.error(`Failed to get vendor list: ${err.message}`, { route: 'getVendorList' });
+        return res.status(200).json({ response: "error", error: ["Internal server error"] });
+    }
+};
+
+const getVendorListByCategory = async (req, res) => {
+    const categoryId = req.params.category_id;
+    const id = parseInt(categoryId, 10);
+    if (!Number.isInteger(id) || id < 1) {
+        return res.status(200).json({ response: "error", error: ["Invalid category id"] });
+    }
+    const category = await categoryService.getCategoryById(id);
+    if (!category) {
+        return res.status(200).json({ response: "error", error: ["Category not found"] });
+    }
+    try {
+        const vendors = await vendorService.getVendorListByCategory(id);
+        return res.status(200).json({ response: "success", vendors });
+    } catch (err) {
+        logger.error(`Failed to get vendor list by category: ${err.message}`, { route: 'getVendorListByCategory' });
+        return res.status(200).json({ response: "error", error: ["Internal server error"] });
+    }
+};
+
+const approveVendor = async (req, res) => {
+    const { vendor_id, status } = req.body;
+    const errors = [];
+    if (vendor_id === undefined || vendor_id === null || String(vendor_id).trim() === '') {
+        errors.push('Vendor id is required');
+    }
+    const statusNum = status !== undefined && status !== null ? parseInt(String(status), 10) : NaN;
+    if (!Number.isInteger(statusNum) || (statusNum !== 1 && statusNum !== 2)) {
+        errors.push('Status must be 1 (approve) or 2 (reject)');
+    }
+    if (errors.length > 0) {
+        return res.status(200).json({ response: "error", error: errors });
+    }
+    const userId = parseInt(String(vendor_id).trim(), 10);
+    if (!Number.isInteger(userId) || userId < 1) {
+        return res.status(200).json({ response: "error", error: ["Invalid vendor id"] });
+    }
+    const exists = await vendorService.getVendorDetailsByUserId(userId);
+    if (!exists) {
+        return res.status(200).json({ response: "error", error: ["Vendor not found"] });
+    }
+    try {
+        const updated = await vendorService.approveOrRejectVendor(userId, statusNum);
+        if (!updated) {
+            return res.status(200).json({ response: "error", error: ["Failed to update vendor status"] });
+        }
+        const message = statusNum === 1 ? 'Vendor approved.' : 'Vendor rejected.';
+        logger.info(`${message} vendor_id=${userId}`, { route: 'approveVendor' });
+        return res.status(200).json({ response: "success", message });
+    } catch (err) {
+        logger.error(`Approve vendor failed: ${err.message}`, { route: 'approveVendor' });
+        return res.status(200).json({ response: "error", error: ["Internal server error"] });
+    }
+};
+
 module.exports = {
     registerVendor,
     getVendorList,
-}
+    getVendorListByCategory,
+    approveVendor,
+};

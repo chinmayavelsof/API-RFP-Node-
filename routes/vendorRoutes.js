@@ -9,5 +9,7 @@ const upload = multer();
 router.post('/registervendor', upload.none(), vendorController.registerVendor);
 
 router.get('/vendorlist', authMiddleware.isAdmin, vendorController.getVendorList);
+router.get('/vendorlist/:category_id', authMiddleware.isAdmin, vendorController.getVendorListByCategory);
+router.post('/approveVendor', authMiddleware.isAdmin, upload.none(), vendorController.approveVendor);
 
 module.exports = router;

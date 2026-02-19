@@ -57,4 +57,7 @@ const VendorDetails = sequelize.define('VendorDetails', {
     timestamps: false
 });
 
+const User = require('./userModel');
+VendorDetails.belongsTo(User, { foreignKey: 'user_id' });
+
 module.exports = VendorDetails;

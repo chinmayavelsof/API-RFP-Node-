@@ -10,11 +10,40 @@ CREATE TABLE `categories` (
 */
 const Category = require('../models/categoryModel');
 
+const createCategory = async (name) => {
+    return await Category.create({ name });
+};
 
 const getCategoryById = async (id) => {
     return await Category.findOne({ where: { id } });
 };
 
+const getCategoryByName = async (name) => {
+    return await Category.findOne({ where: { name } });
+};
+
+const getCategoryList = async () => {
+    return await Category.findAll();
+};
+
+const deleteCategory = async (id) => {
+    return await Category.destroy({ where: { id } });
+};
+
+const updateCategory = async (id, name) => {
+    return await Category.update({ name }, { where: { id } });
+};
+
+const updateCategoryStatus = async (id, status) => {
+    return await Category.update({ status }, { where: { id } });
+};
+
 module.exports = {
-    getCategoryById
+    getCategoryById,
+    getCategoryList,
+    createCategory,
+    getCategoryByName,
+    deleteCategory,
+    updateCategory,
+    updateCategoryStatus
 };

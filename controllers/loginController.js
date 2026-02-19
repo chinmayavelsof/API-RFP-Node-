@@ -44,7 +44,7 @@ const login = async (req, res) => {
         }
         const token = jwt.sign({ id: user.id, type: user.type }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         logger.info(`User logged in: ${user.email}`, { route: 'login' });
-        return res.status(200).json({ response: "success", data: { id: user.id, type: user.type, name: user.firstname + ' ' + user.lastname, email: user.email, token } });
+        return res.status(200).json({ response: "success", user_id: user.id, type: user.type, name: user.firstname + ' ' + user.lastname, email: user.email, token });
     } catch (err) {
         logger.error(`Login failed: ${err.message}`, { route: 'login' });
         return res.status(200).json({ response: "error", error: "Internal server error" });

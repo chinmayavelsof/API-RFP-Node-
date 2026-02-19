@@ -15,6 +15,10 @@ CREATE TABLE `vendor_details` (
 */
 
 const VendorDetails = require('../models/vendorModel');
+const User = require('../models/userModel');
+const VendorCategory = require('../models/vendorCategoryModel');
+const userService = require('./userService');
+const vendorCategoryService = require('./vendorCategoryService');
 
 const createVendorDetails = async (data, options = {}) => {
     const { user_id, no_of_employees, revenue, pancard_no, gst_no } = data;
@@ -33,8 +37,62 @@ const getVendorDetailsByGstNo = async (gst_no) => {
     return await VendorDetails.findOne({ where: { gst_no } });
 };
 
+// Fetch vendor_details with user info and categories; return flat shape: user_id, name, email, mobile, no_of_employees, status, categories
 const getVendorList = async () => {
-    return await VendorDetails.findAll();
+    const rows = await VendorDetails.findAll({
+        include: [{
+            model: User,
+            attributes: ['id', 'firstname', 'lastname', 'email', 'mobile', 'status'],
+            required: true,
+            include: [{
+                model: VendorCategory,
+                attributes: ['category_id'],
+                required: false
+            }]
+        }]
+    });
+    return rows.map((row) => mapRowToVendor(row.get({ plain: true })));
+};
+
+const mapRowToVendor = (plain) => {
+    const user = plain.User || {};
+    const vendorCats = user.VendorCategories || [];
+    const categories = vendorCats.map((c) => c.category_id).join(',');
+    return {
+        user_id: plain.user_id,
+        name: [user.firstname, user.lastname].filter(Boolean).join(' '),
+        email: user.email,
+        mobile: user.mobile,
+        no_of_employees: plain.no_of_employees,
+        status: user.status,
+        categories: categories || ''
+    };
+};
+
+// Same as getVendorList but only vendors that have this category_id
+const getVendorListByCategory = async (categoryId) => {
+    const rows = await VendorDetails.findAll({
+        include: [{
+            model: User,
+            attributes: ['id', 'firstname', 'lastname', 'email', 'mobile', 'status'],
+            required: true,
+            include: [{
+                model: VendorCategory,
+                attributes: ['category_id'],
+                required: true,
+                where: { category_id: categoryId }
+            }]
+        }]
+    });
+    return rows.map((row) => mapRowToVendor(row.get({ plain: true })));
+};
+
+// status: 1 = approve (Approved), 2 = reject (Rejected). vendor_id is user id.
+const approveOrRejectVendor = async (vendorId, status) => {
+    const newStatus = status === 1 ? 'Approved' : status === 2 ? 'Rejected' : null;
+    if (!newStatus) return false;
+    const [count] = await userService.updateUser(vendorId, { status: newStatus });
+    return count > 0;
 };
 
 module.exports = {
@@ -43,4 +101,6 @@ module.exports = {
     getVendorDetailsByPancardNo,
     getVendorDetailsByGstNo,
     getVendorList,
+    getVendorListByCategory,
+    approveOrRejectVendor,
 };
