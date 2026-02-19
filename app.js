@@ -3,6 +3,7 @@ const cookieParser = require('cookie-parser');
 const express = require('express');
 const path = require('path');
 const db = require('./config/db');
+const cors = require('cors');
 const requestResponseLogger = require('./middlewares/requestResponseLogger');
 const loginRoutes = require('./routes/loginRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -16,7 +17,7 @@ const app = express();
 const PORT = process.env.PORT || 3003;
 
 app.use(requestResponseLogger);
-
+app.use(cors());
 app.use('/api', loginRoutes);
 app.use('/api', adminRoutes);
 
