@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const userService = require('../services/userService');
+const logger = require('../utils/logger');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN;
@@ -24,7 +25,6 @@ const validateLogin = (email, password) => {
 }
 
 const login = async (req, res) => {
-    console.log(req.body);
     const { email, password } = req.body;
     const errors = validateLogin(email, password);
     if(errors.length > 0) {
@@ -42,10 +42,11 @@ const login = async (req, res) => {
         if(user.status != 'Approved') {
             return res.status(400).json({ response: "error", error: "User is not approved" });
         }
-        const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-        // Send id, role(as type), name, email, token
+        const token = jwt.sign({ id: user.id, type: user.type }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        logger.info(`User logged in: ${user.email}`, { route: 'login' });
         return res.status(200).json({ response: "success", data: { id: user.id, type: user.type, name: user.firstname + ' ' + user.lastname, email: user.email, token } });
-    } catch (error) {
+    } catch (err) {
+        logger.error(`Login failed: ${err.message}`, { route: 'login' });
         return res.status(500).json({ response: "error", error: "Internal server error" });
     }
 }

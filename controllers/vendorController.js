@@ -18,6 +18,7 @@ const vendorService = require('../services/vendorService');
 const userService = require('../services/userService');
 const vendorCategoryService = require('../services/vendorCategoryService');
 const categoryService = require('../services/categoryService');
+const logger = require('../utils/logger');
 const sequelize = require('../config/db');
 
 const PANCARD_NO_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
@@ -89,7 +90,6 @@ const validateUserRegister = (firstname, lastname, email, password, mobile) => {
 }
 // For resgitering vendor first register as user then register as vendor and use DB transactions to ensure data consistency
 const registerVendor = async (req, res) => {
-    console.log(req.body);
     const {firstname, lastname, email, password, mobile, no_of_employees, revenue, pancard_no, gst_no, category } = req.body;
     const userErrors = validateUserRegister(firstname, lastname, email, password, mobile);
     const vendorErrors = validateVendorRegister(no_of_employees, revenue, pancard_no, gst_no);
@@ -124,26 +124,29 @@ const registerVendor = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
         user = await userService.createUser({ firstname, lastname, email, password, mobile, type: 'vendor' }, { transaction });
-        console.log("User created successfully");
         await vendorService.createVendorDetails({ user_id: user.id, no_of_employees, revenue, pancard_no, gst_no }, { transaction });
-        console.log("Vendor details created successfully");
         for(const category of categories) {
             await vendorCategoryService.createVendorCategories(user.id, category, { transaction });
-            console.log("Vendor category created successfully");
         }
         await transaction.commit();
-        console.log("Vendor registered successfully");
+        logger.info('Vendor registered successfully', { route: 'registerVendor' });
         return res.status(200).json({ response: "success", message: "Vendor registered successfully" });
-    } catch (error) {
+    } catch (err) {
         try {
             await transaction.rollback();
         } catch (rollbackErr) {
-            console.error('Rollback error:', rollbackErr);
+            logger.error(`Transaction rollback failed: ${rollbackErr.message}`, { route: 'registerVendor' });
         }
+        logger.error(`Vendor registration failed: ${err.message}`, { route: 'registerVendor' });
         return res.status(500).json({ response: "error", error: "Internal server error" });
     }
 }
 
+const getVendorList = async (req, res) => {
+    const vendors = await vendorService.getVendorList();
+    return res.status(200).json({ response: "success", vendors: vendors });
+}
 module.exports = {
-    registerVendor
+    registerVendor,
+    getVendorList,
 }

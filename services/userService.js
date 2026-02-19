@@ -23,11 +23,16 @@ const createUser = async (data, options = {}) => {
     return await User.create({ firstname, lastname, email, password, mobile, type }, options);
 };
 
+const updateUser = async (id, data) => {
+    return await User.update(data, { where: { id } });
+};
+
 const getUserByEmail = async (email) => {
     return await User.findOne({ where: { email } });
 };
 
 module.exports = {
     createUser,
+    updateUser,
     getUserByEmail,
 };

@@ -1,4 +1,5 @@
 const userService = require('../services/userService');
+const logger = require('../utils/logger');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MOBILE_REGEX = /^[0-9]+$/;
@@ -48,8 +49,10 @@ const registerAdmin = async (req, res) => {
             return res.status(400).json({ response: "error", error: "Email already exists" });
         };
         user = await userService.createUser({ firstname, lastname, email, password, mobile, type: 'admin' });
+        logger.info(`Admin registered: ${email}`, { route: 'registerAdmin' });
         return res.status(200).json({ response: "success", message: "Admin registered successfully" });
-    } catch (error) {
+    } catch (err) {
+        logger.error(`Admin registration failed: ${err.message}`, { route: 'registerAdmin' });
         return res.status(500).json({ response: "error", error: "Internal server error" });
     }
 }

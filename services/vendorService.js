@@ -33,9 +33,14 @@ const getVendorDetailsByGstNo = async (gst_no) => {
     return await VendorDetails.findOne({ where: { gst_no } });
 };
 
+const getVendorList = async () => {
+    return await VendorDetails.findAll();
+};
+
 module.exports = {
     createVendorDetails,
     getVendorDetailsByUserId,
     getVendorDetailsByPancardNo,
     getVendorDetailsByGstNo,
+    getVendorList,
 };
