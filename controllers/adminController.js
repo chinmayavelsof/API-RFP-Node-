@@ -40,20 +40,20 @@ const registerAdmin = async (req, res) => {
     const { firstname, lastname, email, password, mobile } = req.body;
     const errors = validateAdminRegister(firstname, lastname, email, password, mobile);
     if(errors.length > 0) {
-        return res.status(400).json({ response: "error", error: errors });
+        return res.status(200).json({ response: "error", error: errors });
     }
     // Unique email check
     try {
         let user = await userService.getUserByEmail(email);
         if(user) {
-            return res.status(400).json({ response: "error", error: "Email already exists" });
+            return res.status(200).json({ response: "error", error: "Email already exists" });
         };
         user = await userService.createUser({ firstname, lastname, email, password, mobile, type: 'admin' });
         logger.info(`Admin registered: ${email}`, { route: 'registerAdmin' });
         return res.status(200).json({ response: "success", message: "Admin registered successfully" });
     } catch (err) {
         logger.error(`Admin registration failed: ${err.message}`, { route: 'registerAdmin' });
-        return res.status(500).json({ response: "error", error: "Internal server error" });
+        return res.status(200).json({ response: "error", error: "Internal server error" });
     }
 }
 

@@ -58,15 +58,15 @@ const forgetPassword = async (req, res) => {
     const { email } = req.body;
     const errors = validateForgetPassword(email);
     if(errors.length > 0) {
-        return res.status(400).json({ response: "error", error: errors });
+        return res.status(200).json({ response: "error", error: errors });
     }
     const user = await userService.getUserByEmail(email);
     if(!user) {
-        return res.status(400).json({ response: "error", error: "User not found" });
+        return res.status(200).json({ response: "error", error: "User not found" });
     }
     // Check if the OTP has already been sent in the last 5 minutes
     if(user.otp && user.otp_expires_at && new Date(user.otp_expires_at) > new Date(Date.now() - 5 * 60 * 1000)) {
-        return res.status(400).json({ response: "error", error: "OTP already sent in the last 5 minutes" });
+        return res.status(200).json({ response: "error", error: "OTP already sent in the last 5 minutes" });
     }
     // Generate OTP and send email and save the otp and otp_expires_at in the database
     const otp = Math.floor(100000 + Math.random() * 900000);
@@ -79,7 +79,7 @@ const forgetPassword = async (req, res) => {
     const result = await emailService.sendEmail(email, subject, text);
     if(!result) {
         logger.error('Forget password: email send failed', { route: 'forgetPassword' });
-        return res.status(500).json({ response: "error", error: "Internal server error" });
+        return res.status(200).json({ response: "error", error: "Internal server error" });
     }
     logger.info(`OTP sent to ${email}`, { route: 'forgetPassword' });
     return res.status(200).json({ response: "success",  message: "OTP sent to email" });
@@ -89,17 +89,17 @@ const confirmotpResetPassword = async (req, res) => {
     const { email, otp, new_password } = req.body;
     const errors = validateConfirmotpResetPassword(email, otp, new_password);
     if(errors.length > 0) {
-        return res.status(400).json({ response: "error", error: errors });
+        return res.status(200).json({ response: "error", error: errors });
     }
     const user = await userService.getUserByEmail(email);
     if(!user) {
-        return res.status(400).json({ response: "error", error: "User not found" });
+        return res.status(200).json({ response: "error", error: "User not found" });
     }
     if(user.otp !== otp) {
-        return res.status(400).json({ response: "error", error: "Invalid OTP" });
+        return res.status(200).json({ response: "error", error: "Invalid OTP" });
     }
     if(new Date(user.otp_expires_at) < new Date()) {
-        return res.status(400).json({ response: "error", error: "OTP has expired" });
+        return res.status(200).json({ response: "error", error: "OTP has expired" });
     }
     const hashedPassword = await bcrypt.hash(new_password, 10);
     await userService.updateUser(user.id, { password: hashedPassword });
@@ -111,15 +111,15 @@ const resetPassword = async (req, res) => {
     const { email, old_password, new_password } = req.body;
     const errors = validateResetPassword(email, old_password, new_password);
     if(errors.length > 0) {
-        return res.status(400).json({ response: "error", error: errors });
+        return res.status(200).json({ response: "error", error: errors });
     }
     const user = await userService.getUserByEmail(email);
     if(!user) {
-        return res.status(400).json({ response: "error", error: "User not found" });
+        return res.status(200).json({ response: "error", error: "User not found" });
     }
     const isPasswordCorrect = await bcrypt.compare(old_password, user.password);
     if(!isPasswordCorrect) {
-        return res.status(400).json({ response: "error", error: "Invalid old password" });
+        return res.status(200).json({ response: "error", error: "Invalid old password" });
     }
     const hashedPassword = await bcrypt.hash(new_password, 10);
     await userService.updateUser(user.id, { password: hashedPassword });

@@ -27,10 +27,9 @@ app.use('/api', passwordRoutes);
 app.use('/api', vendorRoutes);
 
 app.use(cookieParser());
-// 404 error
-//   - Error format: { "response": "error", "error": "message" } or { "response": "error", "error": ["msg1", "msg2"] }
+// All responses use HTTP 200; body indicates success/error via response field
 app.use((req, res, next) => {
-    res.status(404).json({ response: "error", error: "Route not found" });
+    res.status(200).json({ response: "error", error: ["Route not found"] });
     next();
 });
 

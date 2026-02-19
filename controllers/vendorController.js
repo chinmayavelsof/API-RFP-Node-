@@ -95,29 +95,29 @@ const registerVendor = async (req, res) => {
     const vendorErrors = validateVendorRegister(no_of_employees, revenue, pancard_no, gst_no);
     const errors = [...userErrors, ...vendorErrors];
     if(errors.length > 0) {
-        return res.status(400).json({ response: "error", error: errors });
+        return res.status(200).json({ response: "error", error: errors });
     }
     // Unique email check
     let user = await userService.getUserByEmail(email);
     if(user) {
-        return res.status(400).json({ response: "error", error: "Email already exists" });
+        return res.status(200).json({ response: "error", error: "Email already exists" });
     }
     // Unique pancard number check
     let vendor = await vendorService.getVendorDetailsByPancardNo(pancard_no);
     if(vendor) {
-        return res.status(400).json({ response: "error", error: "Pancard number already exists" });
+        return res.status(200).json({ response: "error", error: "Pancard number already exists" });
     }
     // Unique GST number check
     vendor = await vendorService.getVendorDetailsByGstNo(gst_no);
     if(vendor) {
-        return res.status(400).json({ response: "error", error: "GST number already exists" });
+        return res.status(200).json({ response: "error", error: "GST number already exists" });
     }
     // category have comma separated values
     const categories = category.split(',');
     for(const category of categories) {
         const categoryId = await categoryService.getCategoryById(category);
         if(!categoryId) {
-            return res.status(400).json({ response: "error", error: "Category not found" });
+            return res.status(200).json({ response: "error", error: "Category not found" });
         }
     }
     // Create user then vendor details using DB transaction so both succeed or both rollback
@@ -138,7 +138,7 @@ const registerVendor = async (req, res) => {
             logger.error(`Transaction rollback failed: ${rollbackErr.message}`, { route: 'registerVendor' });
         }
         logger.error(`Vendor registration failed: ${err.message}`, { route: 'registerVendor' });
-        return res.status(500).json({ response: "error", error: "Internal server error" });
+        return res.status(200).json({ response: "error", error: "Internal server error" });
     }
 }
 

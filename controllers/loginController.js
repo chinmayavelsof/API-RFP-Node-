@@ -28,26 +28,26 @@ const login = async (req, res) => {
     const { email, password } = req.body;
     const errors = validateLogin(email, password);
     if(errors.length > 0) {
-        return res.status(400).json({ response: "error", error: errors });
+        return res.status(200).json({ response: "error", error: errors });
     }
     try {
         const user = await userService.getUserByEmail(email);
         if(!user) {
-            return res.status(400).json({ response: "error", error: "Invalid email or password" });
+            return res.status(200).json({ response: "error", error: "Invalid email or password" });
         }
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if(!isPasswordValid) {
-            return res.status(400).json({ response: "error", error: "Invalid email or password" });
+            return res.status(200).json({ response: "error", error: "Invalid email or password" });
         }
         if(user.status != 'Approved') {
-            return res.status(400).json({ response: "error", error: "User is not approved" });
+            return res.status(200).json({ response: "error", error: "User is not approved" });
         }
         const token = jwt.sign({ id: user.id, type: user.type }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         logger.info(`User logged in: ${user.email}`, { route: 'login' });
         return res.status(200).json({ response: "success", data: { id: user.id, type: user.type, name: user.firstname + ' ' + user.lastname, email: user.email, token } });
     } catch (err) {
         logger.error(`Login failed: ${err.message}`, { route: 'login' });
-        return res.status(500).json({ response: "error", error: "Internal server error" });
+        return res.status(200).json({ response: "error", error: "Internal server error" });
     }
 }
 
