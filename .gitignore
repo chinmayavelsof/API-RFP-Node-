@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Environment (secrets)
+.env
+
+# Logs
+npm-debug.log*
+logs/
+
+# Uploaded files
+uploads/
+
+# OS
+.DS_Store
+Thumbs.db
