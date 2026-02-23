@@ -15,20 +15,36 @@ CREATE TABLE `users` (
 */
 const User = require('../models/userModel');
 const bcrypt = require('bcrypt');
+const logger = require('../utils/logger');
 
 const createUser = async (data, options = {}) => {
-    const hashedPassword = await bcrypt.hash(data.password, 10);
-    data.password = hashedPassword;
-    const { firstname, lastname, email, password, mobile, type } = data;
-    return await User.create({ firstname, lastname, email, password, mobile, type }, options);
+    try {
+        const hashedPassword = await bcrypt.hash(data.password, 10);
+        data.password = hashedPassword;
+        const { firstname, lastname, email, password, mobile, type } = data;
+        return await User.create({ firstname, lastname, email, password, mobile, type }, options);
+    } catch (err) {
+        logger.error(`Failed to create user: ${err.message}`, { route: 'createUser' });
+        throw new Error('Failed to create user');
+    }
 };
 
 const updateUser = async (id, data) => {
-    return await User.update(data, { where: { id } });
+    try {
+        return await User.update(data, { where: { id } });
+    } catch (err) {
+        logger.error(`Failed to update user: ${err.message}`, { route: 'updateUser' });
+        throw new Error('Failed to update user');
+    }
 };
 
 const getUserByEmail = async (email) => {
-    return await User.findOne({ where: { email } });
+    try {
+        return await User.findOne({ where: { email } });
+    } catch (err) {
+        logger.error(`Failed to get user by email: ${err.message}`, { route: 'getUserByEmail' });
+        throw new Error('Failed to get user by email');
+    }
 };
 
 module.exports = {

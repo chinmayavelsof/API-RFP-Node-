@@ -23,6 +23,9 @@ const getCategoryList = async (req, res) => {
 const getCategoryById = async (req, res) => {
     try {
         const category = await categoryService.getCategoryById(req.params.id);
+        if(!category) {
+            return res.status(200).json({ response: "error", error: "Category not found" });
+        }
         return res.status(200).json({ response: "success", category });
     } catch (err) {
         logger.error(`Failed to get category by id: ${err.message}`, { route: 'getCategoryById' });

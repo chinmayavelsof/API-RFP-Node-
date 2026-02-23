@@ -19,39 +19,65 @@ const User = require('../models/userModel');
 const VendorCategory = require('../models/vendorCategoryModel');
 const userService = require('./userService');
 const vendorCategoryService = require('./vendorCategoryService');
+const logger = require('../utils/logger');
 
 const createVendorDetails = async (data, options = {}) => {
     const { user_id, no_of_employees, revenue, pancard_no, gst_no } = data;
-    return await VendorDetails.create({ user_id, no_of_employees, revenue, pancard_no, gst_no }, options);
+    try {
+        return await VendorDetails.create({ user_id, no_of_employees, revenue, pancard_no, gst_no }, options);
+    } catch (err) {
+        logger.error(`Failed to create vendor details: ${err.message}`, { route: 'createVendorDetails' });
+        throw new Error('Failed to create vendor details');
+    }
 };
 
 const getVendorDetailsByUserId = async (userId) => {
-    return await VendorDetails.findOne({ where: { user_id: userId } });
+    try {
+        return await VendorDetails.findOne({ where: { user_id: userId } });
+    } catch (err) {
+        logger.error(`Failed to get vendor details by user id: ${err.message}`, { route: 'getVendorDetailsByUserId' });
+        throw new Error('Failed to get vendor details by user id');
+    }
 };
 
 const getVendorDetailsByPancardNo = async (pancard_no) => {
-    return await VendorDetails.findOne({ where: { pancard_no } });
+    try {
+        return await VendorDetails.findOne({ where: { pancard_no } });
+    } catch (err) {
+        logger.error(`Failed to get vendor details by pancard no: ${err.message}`, { route: 'getVendorDetailsByPancardNo' });
+        throw new Error('Failed to get vendor details by pancard no');
+    }
 };
 
 const getVendorDetailsByGstNo = async (gst_no) => {
-    return await VendorDetails.findOne({ where: { gst_no } });
+    try {
+        return await VendorDetails.findOne({ where: { gst_no } });
+    } catch (err) {
+        logger.error(`Failed to get vendor details by gst no: ${err.message}`, { route: 'getVendorDetailsByGstNo' });
+        throw new Error('Failed to get vendor details by gst no');
+    }
 };
 
 // Fetch vendor_details with user info and categories; return flat shape: user_id, name, email, mobile, no_of_employees, status, categories
 const getVendorList = async () => {
-    const rows = await VendorDetails.findAll({
-        include: [{
-            model: User,
-            attributes: ['id', 'firstname', 'lastname', 'email', 'mobile', 'status'],
-            required: true,
+    try {
+        const rows = await VendorDetails.findAll({
             include: [{
-                model: VendorCategory,
-                attributes: ['category_id'],
-                required: false
+                model: User,
+                attributes: ['id', 'firstname', 'lastname', 'email', 'mobile', 'status'],
+                required: true,
+                include: [{
+                    model: VendorCategory,
+                    attributes: ['category_id'],
+                    required: false
+                }]
             }]
-        }]
-    });
-    return rows.map((row) => mapRowToVendor(row.get({ plain: true })));
+        });
+        return rows.map((row) => mapRowToVendor(row.get({ plain: true })));
+    } catch (err) {
+        logger.error(`Failed to get vendor list: ${err.message}`, { route: 'getVendorList' });
+        throw new Error('Failed to get vendor list');
+    }
 };
 
 const mapRowToVendor = (plain) => {
@@ -71,28 +97,38 @@ const mapRowToVendor = (plain) => {
 
 // Same as getVendorList but only vendors that have this category_id
 const getVendorListByCategory = async (categoryId) => {
-    const rows = await VendorDetails.findAll({
-        include: [{
-            model: User,
-            attributes: ['id', 'firstname', 'lastname', 'email', 'mobile', 'status'],
-            required: true,
+    try {
+        const rows = await VendorDetails.findAll({
             include: [{
-                model: VendorCategory,
-                attributes: ['category_id'],
+                model: User,
+                attributes: ['id', 'firstname', 'lastname', 'email', 'mobile', 'status'],
                 required: true,
-                where: { category_id: categoryId }
+                include: [{
+                    model: VendorCategory,
+                    attributes: ['category_id'],
+                    required: true,
+                    where: { category_id: categoryId }
+                }]
             }]
-        }]
-    });
-    return rows.map((row) => mapRowToVendor(row.get({ plain: true })));
+        });
+        return rows.map((row) => mapRowToVendor(row.get({ plain: true })));
+    } catch (err) {
+        logger.error(`Failed to get vendor list by category: ${err.message}`, { route: 'getVendorListByCategory' });
+        throw new Error('Failed to get vendor list by category');
+    }
 };
 
 // status: 1 = approve (Approved), 2 = reject (Rejected). vendor_id is user id.
 const approveOrRejectVendor = async (vendorId, status) => {
     const newStatus = status === 1 ? 'Approved' : status === 2 ? 'Rejected' : null;
     if (!newStatus) return false;
-    const [count] = await userService.updateUser(vendorId, { status: newStatus });
-    return count > 0;
+    try {
+        const [count] = await userService.updateUser(vendorId, { status: newStatus });
+        return count > 0;
+    } catch (err) {
+        logger.error(`Failed to approve/reject vendor: ${err.message}`, { route: 'approveOrRejectVendor' });
+        throw new Error('Failed to approve or reject vendor');
+    }
 };
 
 module.exports = {

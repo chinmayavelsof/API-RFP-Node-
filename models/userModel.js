@@ -79,7 +79,10 @@ const User = sequelize.define('User', {
 });
 
 const VendorCategory = require('./vendorCategoryModel');
+const RFPVendor = require('./RFPVendorModel');
 User.hasMany(VendorCategory, { foreignKey: 'user_id' });
+User.hasMany(RFPVendor, {foreignKey: 'vendor_id',});
+RFPVendor.belongsTo(User, { foreignKey: 'vendor_id' });
 VendorCategory.belongsTo(User, { foreignKey: 'user_id' });
 
 module.exports = User;

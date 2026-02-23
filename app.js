@@ -20,14 +20,16 @@ const PORT = process.env.PORT || 3003;
 
 app.use(requestResponseLogger);
 app.use(cors());
-app.use('', loginRoutes);
-app.use('', adminRoutes);
+app.use('/api', loginRoutes);
+app.use('/api', adminRoutes);
 
 // Password reset routes
-app.use('', passwordRoutes);
+app.use('/api', passwordRoutes);
 
-app.use('', vendorRoutes);
-app.use('', categoryRoutes);
+app.use('/api', vendorRoutes);
+app.use('/api', categoryRoutes);
+app.use('/api', RFPRoutes);
+
 app.use(cookieParser());
 // All responses use HTTP 200; body indicates success/error via response field
 app.use((req, res, next) => {

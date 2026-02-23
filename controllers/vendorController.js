@@ -114,8 +114,8 @@ const registerVendor = async (req, res) => {
     }
     // category have comma separated values
     const categories = category.split(',');
-    for(const category of categories) {
-        const categoryId = await categoryService.getCategoryById(category);
+    for(const cat of categories) {
+        const categoryId = await categoryService.getCategoryById(cat);
         if(!categoryId) {
             return res.status(200).json({ response: "error", error: "Category not found" });
         }
