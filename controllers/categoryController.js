@@ -33,18 +33,28 @@ const getCategoryById = async (req, res) => {
     }
 }
 
+// Category name: alphanumerical (letters, numbers, and spaces only)
+const CATEGORY_NAME_ALPHANUMERIC = /^[a-zA-Z0-9\s]+$/;
+
 const createCategory = async (req, res) => {
     const { name } = req.body;
-    if(!name || name.trim() === '' || name.length < 3 || name.length > 191) {
+    const trimmedName = name != null ? String(name).trim() : '';
+    if(!trimmedName) {
         return res.status(200).json({ response: "error", error: "Name is required and must be between 3 and 191 characters" });
     }
+    if(trimmedName.length < 3 || trimmedName.length > 191) {
+        return res.status(200).json({ response: "error", error: "Name must be between 3 and 191 characters" });
+    }
+    if(!CATEGORY_NAME_ALPHANUMERIC.test(trimmedName)) {
+        return res.status(200).json({ response: "error", error: "Category name must be alphanumerical (only letters, numbers, and spaces allowed)" });
+    }
     try {
-    // Unique category name check 
-    let category = await categoryService.getCategoryByName(name);
+    // Unique category name check
+    let category = await categoryService.getCategoryByName(trimmedName);
     if(category) {
         return res.status(200).json({ response: "error", error: "Category name already exists" });
     }
-        category = await categoryService.createCategory(name);
+        category = await categoryService.createCategory(trimmedName);
         return res.status(200).json({ response: "success"});
     } catch (err) {
         logger.error(`Failed to create category: ${err.message}`, { route: 'createCategory' });

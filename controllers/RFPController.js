@@ -2,6 +2,7 @@ const logger = require('../utils/logger');
 const RFPService = require('../services/RFPService');
 const categoryService = require('../services/categoryService');
 const vendorService = require('../services/vendorService');
+const emailService = require('../services/emailService');
 const jwt = require('jsonwebtoken');
 
 const validateCreateRFP = (item_name, rfp_no, item_description, quantity, last_date, minimum_price, maximum_price, categories, vendors) => {
@@ -13,36 +14,45 @@ const validateCreateRFP = (item_name, rfp_no, item_description, quantity, last_d
     }
     if(!rfp_no || String(rfp_no).trim() === '') {
         errors.push('RFP number is required');
-    }else if( rfp_no.length > 50) {
+    }else if( String(rfp_no).length > 50) {
         errors.push('RFP number must be less than 50 characters');
     }
-    // Description is optional
     if(item_description && item_description.length > 1000) {
         errors.push('Item description must be less than 1000 characters');
     }
-    if(!quantity || String(quantity).trim() === '') {
+    const qty = quantity != null && String(quantity).trim() !== '' ? parseInt(String(quantity), 10) : NaN;
+    if(quantity == null || String(quantity).trim() === '') {
         errors.push('Quantity is required');
-    }else if(quantity < 1) {
+    }else if(isNaN(qty) || qty < 1) {
         errors.push('Quantity must be greater than 0');
     }
-    // last date must not be in the past
-    if(!last_date || String(last_date).trim() === '') {
+    const lastDateStr = last_date != null ? String(last_date).trim() : '';
+    const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/; // YYYY-MM-DD
+    if(!lastDateStr) {
         errors.push('Last date is required');
-    }else if(last_date < new Date()) {
-        errors.push('Last date must not be in the past');
+    } else if(!DATE_FORMAT.test(lastDateStr)) {
+        errors.push('Last date must be in YYYY-MM-DD format');
+    } else {
+        const parsedDate = new Date(last_date);
+        if(isNaN(parsedDate.getTime())) {
+            errors.push('Last date must be a valid date (e.g. YYYY-MM-DD)');
+        } else if(parsedDate < new Date()) {
+            errors.push('Last date must not be in the past');
+        }
     }
-    if(!minimum_price || String(minimum_price).trim() === '') {
+    const minP = minimum_price != null && String(minimum_price).trim() !== '' ? parseFloat(String(minimum_price)) : NaN;
+    if(minimum_price == null || String(minimum_price).trim() === '') {
         errors.push('Minimum price is required');
-    }else if(minimum_price < 0) {
-        errors.push('Minimum price must be greater than 0');
+    }else if(isNaN(minP) || minP < 0) {
+        errors.push('Minimum price must be greater than or equal to 0');
     }
-    if(!maximum_price || String(maximum_price).trim() === '') {
+    const maxP = maximum_price != null && String(maximum_price).trim() !== '' ? parseFloat(String(maximum_price)) : NaN;
+    if(maximum_price == null || String(maximum_price).trim() === '') {
         errors.push('Maximum price is required');
-    }else if(maximum_price < 0) {
-        errors.push('Maximum price must be greater than 0');
+    }else if(isNaN(maxP) || maxP < 0) {
+        errors.push('Maximum price must be greater than or equal to 0');
     }
-    // Max price must be greater than minimum price
-    if(maximum_price < minimum_price) {
+    if(!isNaN(minP) && !isNaN(maxP) && maxP < minP) {
         errors.push('Maximum price must be greater than minimum price');
     }
     if(!categories || String(categories).trim() === '') {
@@ -51,20 +61,19 @@ const validateCreateRFP = (item_name, rfp_no, item_description, quantity, last_d
     if(!vendors || String(vendors).trim() === '') {
         errors.push('Vendors are required');
     }
-    return errors;
+    return { errors, quantity: qty, minimum_price: minP, maximum_price: maxP };
 }
 
 const createRFP = async (req, res) => {
     const { item_name, rfp_no, item_description, quantity, last_date, minimum_price, maximum_price, categories, vendors } = req.body;
-    // get the admin id from the token decoded
     const decoded = jwt.verify(req.headers.authorization.split(' ')[1], process.env.JWT_SECRET);
     const adminId = decoded.id;
-    const errors = validateCreateRFP(item_name, rfp_no, item_description, quantity, last_date, minimum_price, maximum_price, categories, vendors);
-    if(errors.length > 0) {
-        logger.error(`Validation errors: ${errors}`, { route: 'createRFP' });
-        return res.status(200).json({ response: "error", error: errors });
+    const validation = validateCreateRFP(item_name, rfp_no, item_description, quantity, last_date, minimum_price, maximum_price, categories, vendors);
+    if(validation.errors.length > 0) {
+        logger.error(`Validation errors: ${validation.errors}`, { route: 'createRFP' });
+        return res.status(200).json({ response: "error", error: validation.errors });
     }
-    // check if rfp_no is already exists
+    const { quantity: qty, minimum_price: minP, maximum_price: maxP } = validation;
     try {
         const rfp = await RFPService.getRFPByRFPNo(rfp_no);
         if(rfp) {
@@ -87,8 +96,7 @@ const createRFP = async (req, res) => {
                 return res.status(200).json({ response: "error", error: "Vendor not found" });
             }
         }
-        // if the RFP created successfully then return success else return error
-        await RFPService.createRFP(item_name, rfp_no, item_description, quantity, last_date, minimum_price, maximum_price, categoriesArray, vendorsArray, adminId);
+        await RFPService.createRFP(item_name, rfp_no, item_description, qty, last_date, minP, maxP, categoriesArray, vendorsArray, adminId);
         logger.info(`RFP created successfully`, { route: 'createRFP' });
         return res.status(200).json({ response: "success", message: "RFP created successfully" });
     } catch (err) {
@@ -118,35 +126,40 @@ const updateRFP = async (req, res) => {
     const decoded = jwt.verify(req.headers.authorization.split(' ')[1], process.env.JWT_SECRET);
     const adminId = decoded.id;
     const { item_name, rfp_no, item_description, quantity, last_date, minimum_price, maximum_price, categories, vendors } = req.body;
-    const errors = validateCreateRFP(item_name, rfp_no, item_description, quantity, last_date, minimum_price, maximum_price, categories, vendors);
-    if(errors.length > 0) {
-        logger.error(`Validation errors: ${errors}`, { route: 'updateRFP' });
-        return res.status(200).json({ response: "error", error: errors });
+    const validation = validateCreateRFP(item_name, rfp_no, item_description, quantity, last_date, minimum_price, maximum_price, categories, vendors);
+    if(validation.errors.length > 0) {
+        logger.error(`Validation errors: ${validation.errors}`, { route: 'updateRFP' });
+        return res.status(200).json({ response: "error", error: validation.errors });
     }
+    const { quantity: qty, minimum_price: minP, maximum_price: maxP } = validation;
     try {
         const rfp = await RFPService.getRFPById(id);
         if(!rfp) {
             logger.error(`RFP not found`, { route: 'updateRFP' });
             return res.status(200).json({ response: "error", error: "RFP not found" });
         }
+        const existingByNo = await RFPService.getRFPByRFPNo(rfp_no);
+        if(existingByNo && String(existingByNo.id) !== String(id)) {
+            logger.error(`RFP number already exists`, { route: 'updateRFP' });
+            return res.status(200).json({ response: "error", error: "RFP number already exists" });
+        }
         const categoriesArray = req.body.categories.split(',');
         const vendorsArray = req.body.vendors.split(',');
         for(const category of categoriesArray) {
             const categoryId = await categoryService.getCategoryById(category);
             if(!categoryId) {
-                logger.error(`Category not found`, { route: 'createRFP' });
+                logger.error(`Category not found`, { route: 'updateRFP' });
                 return res.status(200).json({ response: "error", error: "Category not found" });
             }
         }
         for(const vendor of vendorsArray) {
             const vendorId = await vendorService.getVendorDetailsByUserId(vendor);
             if(!vendorId) {
-                logger.error(`Vendor not found`, { route: 'createRFP' });
+                logger.error(`Vendor not found`, { route: 'updateRFP' });
                 return res.status(200).json({ response: "error", error: "Vendor not found" });
             }
         }
-        // if the RFP created successfully then return success else return error
-        await RFPService.updateRFP(id, item_name, rfp_no, item_description, quantity, last_date, minimum_price, maximum_price, categoriesArray, vendorsArray, adminId);
+        await RFPService.updateRFP(id, item_name, rfp_no, item_description, qty, last_date, minP, maxP, categoriesArray, vendorsArray, adminId);
         logger.info(`RFP updated successfully`, { route: 'updateRFP' });
         return res.status(200).json({ response: "success", message: "RFP updated successfully" });
     } catch (err) {
@@ -237,6 +250,12 @@ const applyForRFP = async (req, res) => {
 
         if (!applied) {
             return res.status(200).json({ response: "error", error: "You are not assigned to this RFP or already applied" });
+        }
+        const vendorEmail = req.user.email;
+        if (vendorEmail) {
+            const emailBody = `Your quote for RFP "${rfp.item_name}" (${rfp.rfp_no}) has been submitted successfully.`;
+            const sent = await emailService.sendEmail(vendorEmail, 'Quote Submitted', emailBody);
+            if (!sent) logger.error('RFP apply confirmation email could not be sent', { route: 'applyForRFP', email: vendorEmail });
         }
         logger.info(`Vendor applied for RFP successfully`, { route: 'applyForRFP' });
         return res.status(200).json({ response: "success", message: "Quote submitted successfully" });

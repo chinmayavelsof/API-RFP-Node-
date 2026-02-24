@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 const RFP = require('../models/RFPModel');
 const RFPCategory = require('../models/RFPCategoryModel');
 const RFPVendor = require('../models/RFPVendorModel');
@@ -69,12 +70,23 @@ const updateRFP = async (id, item_name, rfp_no, item_description, quantity, last
                 { where: { id }, transaction: t }
             );
             await RFPCategory.destroy({ where: { rfp_id: id }, transaction: t });
-            await RFPVendor.destroy({ where: { rfp_id: id }, transaction: t });
+            const vendorIdsNum = vendorsArray.map((v) => parseInt(String(v), 10)).filter((n) => !isNaN(n));
+            const existingRfpVendors = await RFPVendor.findAll({ where: { rfp_id: id }, transaction: t });
+            const existingVendorIds = new Set(existingRfpVendors.map((rv) => Number(rv.vendor_id)));
+            await RFPVendor.destroy({
+                where: {
+                    rfp_id: id,
+                    vendor_id: { [Op.notIn]: vendorIdsNum },
+                    applied_status: 'open'
+                },
+                transaction: t
+            });
+            const toAdd = vendorIdsNum.filter((vid) => !existingVendorIds.has(vid));
+            if (toAdd.length) {
+                await RFPVendor.bulkCreate(toAdd.map((vendorId) => ({ rfp_id: id, vendor_id: vendorId })), { transaction: t });
+            }
             if (categoriesArray.length) {
                 await RFPCategory.bulkCreate(categoriesArray.map((categoryId) => ({ rfp_id: id, category_id: categoryId })), { transaction: t });
-            }
-            if (vendorsArray.length) {
-                await RFPVendor.bulkCreate(vendorsArray.map((vendorId) => ({ rfp_id: id, vendor_id: vendorId })), { transaction: t });
             }
             return true;
         });

@@ -102,7 +102,7 @@ const confirmotpResetPassword = async (req, res) => {
         return res.status(200).json({ response: "error", error: "OTP has expired" });
     }
     const hashedPassword = await bcrypt.hash(new_password, 10);
-    await userService.updateUser(user.id, { password: hashedPassword });
+    await userService.updateUser(user.id, { password: hashedPassword, otp: null, otp_expires_at: null });
     logger.info(`Password reset via OTP for ${email}`, { route: 'confirmotpResetPassword' });
     return res.status(200).json({ response: "success", message: "Password reset successfully" });
 }

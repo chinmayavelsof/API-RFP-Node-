@@ -47,8 +47,18 @@ const getUserByEmail = async (email) => {
     }
 };
 
+const getUserById = async (id) => {
+    try {
+        return await User.findByPk(id);
+    } catch (err) {
+        logger.error(`Failed to get user by id: ${err.message}`, { route: 'getUserById' });
+        throw new Error('Failed to get user by id');
+    }
+};
+
 module.exports = {
     createUser,
     updateUser,
     getUserByEmail,
+    getUserById,
 };

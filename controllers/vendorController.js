@@ -18,6 +18,7 @@ const vendorService = require('../services/vendorService');
 const userService = require('../services/userService');
 const vendorCategoryService = require('../services/vendorCategoryService');
 const categoryService = require('../services/categoryService');
+const emailService = require('../services/emailService');
 const logger = require('../utils/logger');
 const sequelize = require('../config/db');
 
@@ -129,6 +130,8 @@ const registerVendor = async (req, res) => {
             await vendorCategoryService.createVendorCategories(user.id, category, { transaction });
         }
         await transaction.commit();
+        const sent = await emailService.sendEmail(user.email, 'Registration Successful', `Hello ${user.firstname},\n\nYou have registered successfully as a vendor. Your account is pending approval. You will receive an email once your account is approved.\n\nThank you.`);
+        if (!sent) logger.error('Registration success email could not be sent', { route: 'registerVendor', email: user.email });
         logger.info('Vendor registered successfully', { route: 'registerVendor' });
         return res.status(200).json({ response: "success", message: "Vendor registered successfully" });
     } catch (err) {
@@ -196,6 +199,13 @@ const approveVendor = async (req, res) => {
         const updated = await vendorService.approveOrRejectVendor(userId, statusNum);
         if (!updated) {
             return res.status(200).json({ response: "error", error: ["Failed to update vendor status"] });
+        }
+        if (statusNum === 1) {
+            const vendorUser = await userService.getUserById(userId);
+            if (vendorUser && vendorUser.email) {
+                const sent = await emailService.sendEmail(vendorUser.email, 'Vendor Account Approved', `Hello ${vendorUser.firstname},\n\nYour vendor account has been approved. You can now log in and access the portal.\n\nThank you.`);
+                if (!sent) logger.error('Approval email could not be sent', { route: 'approveVendor', email: vendorUser.email });
+            }
         }
         const message = statusNum === 1 ? 'Vendor approved.' : 'Vendor rejected.';
         logger.info(`${message} vendor_id=${userId}`, { route: 'approveVendor' });
